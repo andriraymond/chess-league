@@ -1,6 +1,6 @@
 import { requireLeagueAdmin } from "@/lib/permissions";
 import { getLeagueById } from "@/services/league.service";
-import { createPlayer, addExistingPlayerToLeague, deactivatePlayerInLeague, updatePlayerName } from "@/services/player.service";
+import { createPlayer, addExistingPlayerToLeague, deactivatePlayerInLeague, updatePlayerName, removePlayerFromLeague } from "@/services/player.service";
 import { getAllPlayers } from "@/services/player.service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -43,6 +43,15 @@ async function editPlayerNameAction(formData: FormData) {
   if (!name || name.length < 2) throw new Error("Nama minimal 2 karakter");
   const user = await requireLeagueAdmin(leagueId);
   await updatePlayerName(playerId, name, user.id);
+  revalidatePath(`/admin/leagues/${leagueId}/players`);
+}
+
+async function removePlayerAction(formData: FormData) {
+  "use server";
+  const leagueId = formData.get("leagueId") as string;
+  const playerId = formData.get("playerId") as string;
+  const user = await requireLeagueAdmin(leagueId);
+  await removePlayerFromLeague(playerId, leagueId, user.id);
   revalidatePath(`/admin/leagues/${leagueId}/players`);
 }
 
@@ -148,15 +157,24 @@ export default async function AdminLeaguePlayersPage({
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {lp.status === "ACTIVE" && (
-                      <form action={deactivatePlayerAction} className="inline">
+                    <div className="flex items-center gap-3">
+                      {lp.status === "ACTIVE" && (
+                        <form action={deactivatePlayerAction} className="inline">
+                          <input type="hidden" name="leagueId" value={id} />
+                          <input type="hidden" name="playerId" value={lp.playerId} />
+                          <button type="submit" className="text-xs text-amber-600 hover:underline">
+                            Nonaktifkan
+                          </button>
+                        </form>
+                      )}
+                      <form action={removePlayerAction} className="inline">
                         <input type="hidden" name="leagueId" value={id} />
                         <input type="hidden" name="playerId" value={lp.playerId} />
                         <button type="submit" className="text-xs text-destructive hover:underline">
-                          Nonaktifkan
+                          Hapus
                         </button>
                       </form>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))

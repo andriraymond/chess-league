@@ -122,3 +122,39 @@ export async function updatePlayerName(
 
   return updated;
 }
+
+/**
+ * Hapus pemain dari liga (hanya jika belum memiliki riwayat pertandingan di liga ini).
+ */
+export async function removePlayerFromLeague(
+  playerId: string,
+  leagueId: string,
+  actorId: string
+) {
+  const hasMatches = await prisma.match.findFirst({
+    where: {
+      round: { leagueId },
+      OR: [{ playerAId: playerId }, { playerBId: playerId }],
+    },
+    select: { id: true },
+  });
+
+  if (hasMatches) {
+    throw new Error(
+      "Pemain sudah memiliki riwayat pertandingan di liga ini. Gunakan Nonaktifkan."
+    );
+  }
+
+  await prisma.leaguePlayer.delete({
+    where: { leagueId_playerId: { leagueId, playerId } },
+  });
+
+  void createAuditLog({
+    actorId,
+    leagueId,
+    action: "REMOVE_PLAYER_FROM_LEAGUE",
+    entity: "LeaguePlayer",
+    entityId: `${leagueId}:${playerId}`,
+    oldData: { playerId, leagueId },
+  });
+}
