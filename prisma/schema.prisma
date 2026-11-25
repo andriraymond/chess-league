@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  INACTIVE
+}
+
+enum LeagueStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum PlayerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LeaguePlayerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RoundStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+}
+
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum GameResult {
+  PLAYER_A
+  PLAYER_B
+  DRAW
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         UserRole   @default(ADMIN)
+  status       UserStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  leagueAdmins LeagueAdmin[]
+  auditLogs    AuditLog[]
+}
+
+model League {
+  id                    String       @id @default(auto()) @map("_id") @db.ObjectId
+  name                  String
+  slug                  String       @unique
+  description           String?
+  month                 Int          // 1–12
+  year                  Int
+  status                LeagueStatus @default(DRAFT)
+  targetMatchesPerPlayer Int         @default(8)
+  startDate             DateTime?
+  endDate               DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  admins    LeagueAdmin[]
+  players   LeaguePlayer[]
+  rounds    Round[]
+  auditLogs AuditLog[]
+}
+
+model LeagueAdmin {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  leagueId   String   @db.ObjectId
+  userId     String   @db.ObjectId
+  assignedAt DateTime @default(now())
+
+  league League @relation(fields: [leagueId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([leagueId, userId])
+}
+
+model Player {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String?
+  status    PlayerStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  leaguePlayers LeaguePlayer[]
+  matchesAsA    Match[]        @relation("MatchPlayerA")
+  matchesAsB    Match[]        @relation("MatchPlayerB")
+  matchesWon    Match[]        @relation("MatchWinner")
+}
+
+model LeaguePlayer {
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  leagueId      String             @db.ObjectId
+  playerId      String             @db.ObjectId
+  status        LeaguePlayerStatus @default(ACTIVE)
+  joinedAt      DateTime           @default(now())
+
+  league League @relation(fields: [leagueId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@unique([leagueId, playerId])
+}
+
+model Round {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  leagueId    String      @db.ObjectId
+  roundNumber Int
+  status      RoundStatus @default(DRAFT)
+  createdAt   DateTime    @default(now())
+  publishedAt DateTime?
+
+  league  League  @relation(fields: [leagueId], references: [id])
+  matches Match[]
+
+  @@unique([leagueId, roundNumber])
+}
+
+model Match {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  roundId        String      @db.ObjectId
+  playerAId      String?     @db.ObjectId  // null = bye round entry
+  playerBId      String?     @db.ObjectId  // null = bye (playerA gets bye)
+  status         MatchStatus @default(SCHEDULED)
+  scoreA         Int         @default(0)
+  scoreB         Int         @default(0)
+  winnerPlayerId String?     @db.ObjectId
+  games          GameEntry[]
+  completedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  round   Round   @relation(fields: [roundId], references: [id])
+  playerA Player? @relation("MatchPlayerA", fields: [playerAId], references: [id])
+  playerB Player? @relation("MatchPlayerB", fields: [playerBId], references: [id])
+  winner  Player? @relation("MatchWinner", fields: [winnerPlayerId], references: [id])
+}
+
+type GameEntry {
+  gameNumber Int
+  result     GameResult
+  playedAt   DateTime
+  note       String?
+}
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId   String   @db.ObjectId
+  leagueId  String?  @db.ObjectId
+  action    String
+  entity    String
+  entityId  String
+  oldData   Json?
+  newData   Json?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  actor  User    @relation(fields: [actorId], references: [id])
+  league League? @relation(fields: [leagueId], references: [id])
+}
