@@ -149,6 +149,19 @@ export async function removePlayerFromLeague(
     where: { leagueId_playerId: { leagueId, playerId } },
   });
 
+  // Jika pemain tidak terdaftar di liga lain dan tidak punya match di mana pun, hapus record Player-nya juga
+  const [otherLeagues, anyMatches] = await Promise.all([
+    prisma.leaguePlayer.count({ where: { playerId } }),
+    prisma.match.findFirst({
+      where: { OR: [{ playerAId: playerId }, { playerBId: playerId }] },
+      select: { id: true },
+    }),
+  ]);
+
+  if (otherLeagues === 0 && !anyMatches) {
+    await prisma.player.delete({ where: { id: playerId } });
+  }
+
   void createAuditLog({
     actorId,
     leagueId,

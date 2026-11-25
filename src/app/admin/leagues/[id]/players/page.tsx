@@ -1,6 +1,7 @@
 import { requireLeagueAdmin } from "@/lib/permissions";
 import { getLeagueById } from "@/services/league.service";
 import { createPlayer, addExistingPlayerToLeague, deactivatePlayerInLeague, updatePlayerName, removePlayerFromLeague } from "@/services/player.service";
+import { SubmitButton } from "@/components/submit-button";
 import { getAllPlayers } from "@/services/player.service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -87,9 +88,12 @@ export default async function AdminLeaguePlayersPage({
           <input type="hidden" name="leagueId" value={id} />
           <input name="name" required minLength={2} placeholder="Nama pemain" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-primary" />
           <input name="email" type="email" placeholder="Email (opsional)" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-primary" />
-          <button type="submit" className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition">
+          <SubmitButton
+            pendingText="Menambahkan..."
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
+          >
             Tambah
-          </button>
+          </SubmitButton>
         </form>
       </div>
 
@@ -105,9 +109,12 @@ export default async function AdminLeaguePlayersPage({
                 <option key={p.id} value={p.id}>{p.name} {p.email ? `(${p.email})` : ""}</option>
               ))}
             </select>
-            <button type="submit" className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition">
+            <SubmitButton
+              pendingText="Menambahkan..."
+              className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
+            >
               Tambahkan ke Liga
-            </button>
+            </SubmitButton>
           </form>
         </div>
       )}
@@ -142,12 +149,12 @@ export default async function AdminLeaguePlayersPage({
                         minLength={2}
                         className="border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-sm font-medium bg-transparent focus:bg-background focus:outline-none w-44"
                       />
-                      <button
-                        type="submit"
+                      <SubmitButton
+                        pendingText="Menyimpan..."
                         className="text-xs text-primary hover:underline shrink-0"
                       >
                         Simpan
-                      </button>
+                      </SubmitButton>
                     </form>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{lp.player.email ?? "—"}</td>
