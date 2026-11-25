@@ -17,26 +17,26 @@ export type StandingEntry = {
  * Urutan: Poin → Head-to-Head → Mini-table → Playoff (manual).
  */
 export async function calculateStandings(leagueId: string): Promise<StandingEntry[]> {
-  const leaguePlayers = await prisma.leaguePlayer.findMany({
-    where: { leagueId },
-    include: { player: true },
-  });
-
-  const completedMatches = await prisma.match.findMany({
-    where: {
-      round: { leagueId },
-      status: MatchStatus.COMPLETED,
-    },
-    include: { playerA: true, playerB: true },
-  });
-
-  const byeMatches = await prisma.match.findMany({
-    where: {
-      round: { leagueId },
-      playerBId: null,
-    },
-    select: { playerAId: true },
-  });
+  const [leaguePlayers, completedMatches, byeMatches] = await Promise.all([
+    prisma.leaguePlayer.findMany({
+      where: { leagueId },
+      include: { player: true },
+    }),
+    prisma.match.findMany({
+      where: {
+        round: { leagueId },
+        status: MatchStatus.COMPLETED,
+      },
+      include: { playerA: true, playerB: true },
+    }),
+    prisma.match.findMany({
+      where: {
+        round: { leagueId },
+        playerBId: null,
+      },
+      select: { playerAId: true },
+    }),
+  ]);
 
   // Inisialisasi stats
   const stats: Record<string, { played: number; won: number; lost: number; bye: number }> = {};

@@ -10,6 +10,24 @@ export default async function HallOfFamePage() {
     orderBy: [{ year: "desc" }, { month: "desc" }],
   });
 
+  const leagueIds = completedLeagues.map((l) => l.id);
+
+  // Fetch semua match selesai untuk semua liga sekaligus (hindari N+1 query)
+  const allCompletedMatches = leagueIds.length > 0
+    ? await prisma.match.findMany({
+        where: { round: { leagueId: { in: leagueIds } }, status: MatchStatus.COMPLETED },
+        include: { winner: true, round: { select: { leagueId: true } } },
+      })
+    : [];
+
+  // Kelompokkan match berdasarkan leagueId
+  const matchesByLeague: Record<string, typeof allCompletedMatches> = {};
+  for (const m of allCompletedMatches) {
+    const lid = m.round.leagueId;
+    if (!matchesByLeague[lid]) matchesByLeague[lid] = [];
+    matchesByLeague[lid].push(m);
+  }
+
   // Untuk setiap liga, cari pemenang (player dengan win terbanyak)
   const champions: {
     league: typeof completedLeagues[0];
@@ -18,10 +36,7 @@ export default async function HallOfFamePage() {
   }[] = [];
 
   for (const league of completedLeagues) {
-    const matches = await prisma.match.findMany({
-      where: { round: { leagueId: league.id }, status: MatchStatus.COMPLETED },
-      include: { winner: true },
-    });
+    const matches = matchesByLeague[league.id] ?? [];
 
     const wins: Record<string, { name: string; count: number }> = {};
     for (const m of matches) {

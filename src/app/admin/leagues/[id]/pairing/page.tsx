@@ -1,6 +1,6 @@
 import { requireLeagueAdmin } from "@/lib/permissions";
 import { getLeagueById } from "@/services/league.service";
-import { generateRound, confirmRound, deleteDraftRound, deleteRound, getRoundWithMatches } from "@/services/round.service";
+import { generateRound, confirmRound, deleteDraftRound, deleteRound } from "@/services/round.service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -53,10 +53,8 @@ export default async function AdminPairingPage({
 
   const activePlayers = league.players.filter((lp) => lp.status === "ACTIVE");
 
-  // Fetch detail setiap round beserta matchnya
-  const roundsWithMatches = await Promise.all(
-    league.rounds.map((r) => getRoundWithMatches(r.id))
-  );
+  // getLeagueById sudah meng-include rounds beserta matches
+  const roundsWithMatches = league.rounds;
 
   const draftRound = roundsWithMatches.find((r) => r?.status === "DRAFT");
 
