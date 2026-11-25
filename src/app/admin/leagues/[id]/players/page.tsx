@@ -1,6 +1,6 @@
 import { requireLeagueAdmin } from "@/lib/permissions";
 import { getLeagueById } from "@/services/league.service";
-import { createPlayer, addExistingPlayerToLeague, deactivatePlayerInLeague } from "@/services/player.service";
+import { createPlayer, addExistingPlayerToLeague, deactivatePlayerInLeague, updatePlayerName } from "@/services/player.service";
 import { getAllPlayers } from "@/services/player.service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -35,6 +35,17 @@ async function deactivatePlayerAction(formData: FormData) {
   revalidatePath(`/admin/leagues/${leagueId}/players`);
 }
 
+async function editPlayerNameAction(formData: FormData) {
+  "use server";
+  const leagueId = formData.get("leagueId") as string;
+  const playerId = formData.get("playerId") as string;
+  const name = (formData.get("name") as string)?.trim();
+  if (!name || name.length < 2) throw new Error("Nama minimal 2 karakter");
+  const user = await requireLeagueAdmin(leagueId);
+  await updatePlayerName(playerId, name, user.id);
+  revalidatePath(`/admin/leagues/${leagueId}/players`);
+}
+
 export default async function AdminLeaguePlayersPage({
   params,
 }: {
@@ -42,10 +53,11 @@ export default async function AdminLeaguePlayersPage({
 }) {
   const { id } = await params;
   await requireLeagueAdmin(id);
-  const league = await getLeagueById(id);
+  const [league, allPlayers] = await Promise.all([
+    getLeagueById(id),
+    getAllPlayers(),
+  ]);
   if (!league) notFound();
-
-  const allPlayers = await getAllPlayers();
   const leaguePlayerIds = league.players.map((lp) => lp.playerId);
   const availablePlayers = allPlayers.filter(
     (p) => !leaguePlayerIds.includes(p.id) && p.status === "ACTIVE"
@@ -110,7 +122,25 @@ export default async function AdminLeaguePlayersPage({
               league.players.map((lp, idx) => (
                 <tr key={lp.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 text-muted-foreground">{idx + 1}</td>
-                  <td className="px-4 py-3 font-medium">{lp.player.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <form action={editPlayerNameAction} className="flex items-center gap-2">
+                      <input type="hidden" name="leagueId" value={id} />
+                      <input type="hidden" name="playerId" value={lp.playerId} />
+                      <input
+                        name="name"
+                        defaultValue={lp.player.name}
+                        required
+                        minLength={2}
+                        className="border border-transparent hover:border-border focus:border-primary rounded px-2 py-1 text-sm font-medium bg-transparent focus:bg-background focus:outline-none w-44"
+                      />
+                      <button
+                        type="submit"
+                        className="text-xs text-primary hover:underline shrink-0"
+                      >
+                        Simpan
+                      </button>
+                    </form>
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{lp.player.email ?? "—"}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs px-2 py-1 rounded-full ${lp.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>

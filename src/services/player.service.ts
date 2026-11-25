@@ -35,19 +35,20 @@ export async function createPlayer(
     },
   });
 
-  // Langsung daftarkan ke liga
-  await prisma.leaguePlayer.create({
-    data: { leagueId, playerId: player.id },
-  });
-
-  await createAuditLog({
-    actorId,
-    leagueId,
-    action: "CREATE_PLAYER",
-    entity: "Player",
-    entityId: player.id,
-    newData: { name: data.name, email: data.email, leagueId },
-  });
+  // Langsung daftarkan ke liga & catat audit log secara paralel
+  await Promise.all([
+    prisma.leaguePlayer.create({
+      data: { leagueId, playerId: player.id },
+    }),
+    createAuditLog({
+      actorId,
+      leagueId,
+      action: "CREATE_PLAYER",
+      entity: "Player",
+      entityId: player.id,
+      newData: { name: data.name, email: data.email, leagueId },
+    }),
+  ]);
 
   return player;
 }

@@ -2,15 +2,15 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,13 +26,13 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError(result.error);
+        setLoading(false);
       } else {
-        router.push("/admin");
-        router.refresh();
+        setRedirecting(true);
+        window.location.assign("/admin");
       }
     } catch (err: any) {
       setError(err.message ?? "Terjadi kesalahan. Silakan coba lagi.");
-    } finally {
       setLoading(false);
     }
   }
@@ -85,10 +85,11 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-primary-foreground py-2 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50"
+            disabled={loading || redirecting}
+            className="w-full bg-primary text-primary-foreground py-2 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading ? "Memproses..." : "Login"}
+            {(loading || redirecting) && <Loader2 className="h-4 w-4 animate-spin" />}
+            {redirecting ? "Mengalihkan ke dashboard..." : loading ? "Memproses..." : "Login"}
           </button>
         </form>
 
